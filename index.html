@@ -83,6 +83,10 @@ input:focus,select:focus{border-color:var(--accent);}
   .sync-indicator.syncing{color:var(--accent);}
   .sync-indicator.error{color:var(--red);}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
 </head>
 <body>
 <header>
@@ -106,6 +110,7 @@ input:focus,select:focus{border-color:var(--accent);}
 <div class="toast" id="toast"></div>
 
 <script>
+window.addEventListener("load", function() {
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 const SUPA_URL = "https://ddmposnxfyhgxvyyqswx.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkbXBvc254ZnloZ3h2eXlxc3d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2Nzg4OTQsImV4cCI6MjA4OTI1NDg5NH0.ygxwrkJQHq9LAasa8kN9u87tUB2kMSx0Qc4zjfF6wmQ";
@@ -251,17 +256,26 @@ function setSyncIndicator(state, msg="") {
 }
 
 async function syncToSupabase() {
-  if (!sb) { setSyncIndicator("offline"); return; }
+  if (!sb) { setSyncIndicator("offline"); toast("⚠️ Supabase not initialized"); return; }
   setSyncIndicator("syncing");
   try {
-    await Promise.all([
+    const [r1, r2, r3] = await Promise.all([
       sb.from("transactions").upsert({id:"main", data: transactions, updated_at: new Date().toISOString()}),
       sb.from("investments").upsert({id:"main",  data: investments,  updated_at: new Date().toISOString()}),
       sb.from("savings").upsert({id:"main",      data: savings,      updated_at: new Date().toISOString()}),
     ]);
-    setSyncIndicator("ok");
+    const errors = [r1.error, r2.error, r3.error].filter(Boolean);
+    if (errors.length) {
+      console.error("Sync errors:", errors);
+      setSyncIndicator("error");
+      toast("⚠️ Sync failed: " + errors[0].message);
+    } else {
+      setSyncIndicator("ok");
+    }
   } catch(e) {
+    console.error("Sync exception:", e);
     setSyncIndicator("error");
+    toast("⚠️ Sync error: " + e.message);
   }
 }
 
@@ -274,13 +288,28 @@ async function loadFromSupabase() {
       sb.from("investments").select("data").eq("id","main").single(),
       sb.from("savings").select("data").eq("id","main").single(),
     ]);
-    if (txRes.data)  { transactions = txRes.data.data  ?? []; save("wt_tx",  transactions); }
-    if (invRes.data) { investments  = invRes.data.data  ?? []; save("wt_inv", investments); }
-    if (savRes.data) { savings      = savRes.data.data  ?? {name:"Savings Account",balance:0,rate:0}; save("wt_sav", savings); }
+    // Log errors but don't block — fall back to localStorage
+    if (txRes.error)  console.warn("tx load error:",  txRes.error.message);
+    if (invRes.error) console.warn("inv load error:", invRes.error.message);
+    if (savRes.error) console.warn("sav load error:", savRes.error.message);
+
+    // Only overwrite local data if Supabase returned something valid
+    if (txRes.data?.data  !== undefined) { transactions = txRes.data.data  ?? []; save("wt_tx",  transactions); }
+    if (invRes.data?.data !== undefined) { investments  = invRes.data.data  ?? []; save("wt_inv", investments); }
+    if (savRes.data?.data !== undefined) { savings      = savRes.data.data  ?? {name:"Savings Account",balance:0,rate:0}; save("wt_sav", savings); }
+
+    const anyError = txRes.error || invRes.error || savRes.error;
+    if (anyError) {
+      setSyncIndicator("error");
+      toast("⚠️ Load error: " + (txRes.error||invRes.error||savRes.error).message);
+      return false;
+    }
     setSyncIndicator("ok");
     return true;
   } catch(e) {
+    console.error("Load exception:", e);
     setSyncIndicator("error");
+    toast("⚠️ Load error: " + e.message);
     return false;
   }
 }
@@ -805,12 +834,9 @@ async function initApp() {
   window.addEventListener("offline", () => setSyncIndicator("offline"));
 }
 
-// Start with PIN check — wait for DOM to be ready
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initPin);
-} else {
-  initPin();
-}
+// Start with PIN check
+initPin();
+}); // end window.load
 </script>
 
 <div id="pin-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#f5f5f5;z-index:9999;display:flex;align-items:center;justify-content:center;">
