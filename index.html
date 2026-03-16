@@ -83,8 +83,6 @@ input:focus,select:focus{border-color:var(--accent);}
   .sync-indicator.syncing{color:var(--accent);}
   .sync-indicator.error{color:var(--red);}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 </head>
@@ -109,8 +107,9 @@ input:focus,select:focus{border-color:var(--accent);}
 </nav>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-window.addEventListener("load", function() {
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 const SUPA_URL = "https://ddmposnxfyhgxvyyqswx.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkbXBvc254ZnloZ3h2eXlxc3d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2Nzg4OTQsImV4cCI6MjA4OTI1NDg5NH0.ygxwrkJQHq9LAasa8kN9u87tUB2kMSx0Qc4zjfF6wmQ";
@@ -836,7 +835,6 @@ async function initApp() {
 
 // Start with PIN check
 initPin();
-}); // end window.load
 </script>
 
 <div id="pin-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#f5f5f5;z-index:9999;display:flex;align-items:center;justify-content:center;">
