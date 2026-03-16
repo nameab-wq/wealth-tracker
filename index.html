@@ -144,14 +144,15 @@ let pinBuffer = "";
 let pinConfirm = "";
 let pinMode = "check"; // "check" | "set_first" | "set_confirm"
 
-async function hashPin(pin) {
-  try {
-    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pin + "wt_salt_2026"));
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-  } catch(e) {
-    // Fallback for non-HTTPS or older browsers: simple obfuscation
-    return "simple_" + (pin + "wt_salt_2026").split("").reduce((a,c)=>a+c.charCodeAt(0),0).toString(16);
+function hashPin(pin) {
+  // Simple consistent hash — works identically on ALL browsers
+  const str = pin + "wt_salt_2026";
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) ^ str.charCodeAt(i);
+    h = h & 0xffffffff;
   }
+  return "wt_" + Math.abs(h).toString(16).padStart(8, "0");
 }
 
 function checkSession() {
@@ -200,8 +201,8 @@ function updateDots(n) {
   for (let i=0;i<4;i++) document.getElementById("d"+i).classList.toggle("filled", i<n);
 }
 
-async function handlePinComplete() {
-  const hash = await hashPin(pinBuffer);
+function handlePinComplete() {
+  const hash = hashPin(pinBuffer);
   if (pinMode === "check") {
     const stored = localStorage.getItem(PIN_HASH_KEY);
     if (hash === stored) { setSession(); unlockApp(); }
